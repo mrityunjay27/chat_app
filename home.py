@@ -14,6 +14,12 @@ myclient = pymongo.MongoClient("mongodb://localhost:27017/")
 user_db = myclient["authentication"]  # authentication is db, user_info is the table.
 user_table = user_db["user_info"]
 
+# Some global variables
+current_user = None
+user_list = []
+group_list = []
+cid = None
+
 @app.route("/")
 @app.route("/home")
 def home():
@@ -25,6 +31,7 @@ def register():
 
 @app.route("/register_check", methods=['GET','POST'])
 def register_check():
+    global current_user
     if request.method == 'POST':
         req = dict(request.form)
         print(req)
@@ -41,7 +48,8 @@ def register_check():
         }
         if not found:
             temp = user_table.insert_one(req_dict)
-            return render_template("dashboard.html", uid = req["uid"])
+            current_user = req["uid"]
+            return redirect("dashboard")
         else:
             return render_template("invalid.html", message = "User already registered.")
     return render_template("register.html")
@@ -52,6 +60,7 @@ def login():
 
 @app.route("/login_check", methods=['GET','POST'])
 def login_check():
+    global current_user
     if request.method == 'POST':
         req = dict(request.form)
         print(req)
@@ -67,15 +76,40 @@ def login_check():
             return render_template("invalid.html", message="User not registered.")
         else:
             if user["password"] == req["password"]:
-                return render_template("dashboard.html", uid=req["uid"])
+                current_user = req["uid"]
+                return redirect("dashboard")
             else:
                 return render_template("invalid.html", message="Incorrect password")
 
     return render_template("login.html")
 
+@app.route("/fetch_user", methods=['GET', 'POST'])
+def fetch_user():
+    global user_list
+    file = open("users.txt", "r")
+    data = file.readlines()
+    user_list = data
+    return redirect('dashboard')
+
+@app.route("/fetch_group", methods=['GET', 'POST'])
+def fetch_group():
+    global group_list
+    file = open("groups.txt", "r")
+    data = file.readlines()
+    group_list = data
+    return redirect('dashboard')
+
+
+@app.route("/update_cid/<string:chat_id>", methods=['GET', 'POST'])
+def update_cid(chat_id):
+    global cid
+    cid = chat_id
+    return redirect('/dashboard')
+
 @app.route("/dashboard", methods=['GET','POST'])
 def dashboard():
-    return render_template("dashboard.html")
+    global current_user, user_list, group_list, cid
+    return render_template("dashboard.html", uid=current_user, user_list=user_list, group_list=group_list, cid=cid)
 
 # ip: localhost (127.0.0.1) and port 5000
 if __name__ == "__main__":
