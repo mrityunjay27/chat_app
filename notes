@@ -1,0 +1,7 @@
+To create venv: python -m venv venv   
+To activate venv : venv\Scripts\activate
+
+Starters
+pip install flask
+pip install kafka-python
+pip install pymongo
