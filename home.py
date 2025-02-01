@@ -52,6 +52,25 @@ def login():
 
 @app.route("/login_check", methods=['GET','POST'])
 def login_check():
+    if request.method == 'POST':
+        req = dict(request.form)
+        print(req)
+        query = user_table.find({'uid': req['uid']})
+        found = False
+        user = None
+        for q in query:
+            if q['uid'] == req['uid']:
+                found = True
+                user = q
+                break
+        if not found:
+            return render_template("invalid.html", message="User not registered.")
+        else:
+            if user["password"] == req["password"]:
+                return render_template("dashboard.html", uid=req["uid"])
+            else:
+                return render_template("invalid.html", message="Incorrect password")
+
     return render_template("login.html")
 
 @app.route("/dashboard", methods=['GET','POST'])
