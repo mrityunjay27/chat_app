@@ -14,7 +14,7 @@
 						<h1 style="margin-left: 20px"> <font color="lightgreen">{{uid}}'s </font> Dashboard </h1>
 					</td>
 					<td style="text-align: center;">
-						<a href=""><button class="logout"> Logout </button></a>
+						<a href="{{ url_for('logout', user_id = uid) }}"><button class="logout"> Logout </button></a>
 					</td>
 				</tr>
 			</table>
@@ -23,7 +23,7 @@
 			<table width="100%">
 				<tr>
 					<td style="text-align:center;">
-						<a href="/fetch_user"><button class="btn"><h3>Fetch User</h3></button></a>
+						<a href="{{ url_for('fetch_user', user_id = uid) }}"><button class="btn"><h3>Fetch User</h3></button></a>
 						<div class="vertical-menu">
 							{% for user in user_list %}
  								<a href="{{url_for('update_cid', user_id = uid, chat_id = user)}}">{{user}}</a>
@@ -34,7 +34,7 @@
 				</tr>
 				<tr>
 					<td style="text-align: center;">
-						<a href="/fetch_group"><button class="btn"><h3>Fetch Group</h3></button> </a>
+						<a href="{{ url_for('fetch_group', user_id = uid) }}"><button class="btn"><h3>Fetch Group</h3></button> </a>
 						<div class="vertical-menu">
 							{% for group in group_list %}
  								<a href="{{url_for('update_cid', user_id = uid, chat_id = group)}}">{{group}}</a>
@@ -105,7 +105,7 @@
 			</table>
 		</div>
 		<div class="right_bottom_panel">
-			<form action="" method="POST">
+			<form action="{{ url_for('send_msg', user_id=uid) }}" method="POST">
 			<table width="100%">
 				<tr>
 					<td>
