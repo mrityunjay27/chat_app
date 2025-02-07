@@ -1,4 +1,3 @@
-# from Tools.scripts.make_ctype import method
 import datetime
 
 from flask import Flask, render_template, url_for, request, redirect
@@ -7,6 +6,8 @@ import os
 import time
 import json
 import pymongo
+from json import loads, dumps
+import threading
 
 app = Flask(__name__)
 app.secret_key = 'any_random_string'
@@ -16,9 +17,17 @@ myclient = pymongo.MongoClient("mongodb://localhost:27017/")
 user_db = myclient["authentication"]  # authentication is db, user_info is the table.
 user_table = user_db["user_info"]
 
+producer = KafkaProducer(bootstrap_servers = 'localhost:9092')
+
+
 # Some global variables
 users_data = {}  # This is the only structure that will have everything
 msg_count = 0
+
+
+def user_handle(user_id):
+    pass
+
 
 @app.route("/")
 @app.route("/home")
@@ -56,6 +65,10 @@ def register_check():
             users_data[uid]["group_list"] = []
             users_data[uid]["msg_list"] = {}
 
+            # Create a thread when user logs in.
+            t1 = threading.Thread(target=user_handle, args=(uid,))
+            t1.start()
+
             return redirect("/dashboard/" + str(uid))
         else:
             return render_template("invalid.html", message = "User already registered.")
@@ -90,6 +103,10 @@ def login_check():
                 users_data[uid]["group_list"] = []
                 users_data[uid]["msg_list"] = {}
 
+                # Create a thread when user logs in.
+                t1 = threading.Thread(target=user_handle, args=(uid,))
+                t1.start()
+
                 return redirect("/dashboard/" + str(uid))
             else:
                 return render_template("invalid.html", message="Incorrect password")
@@ -122,14 +139,27 @@ def update_cid(user_id, chat_id):
 @app.route("/dashboard/<string:user_id>", methods=['GET','POST'])
 def dashboard(user_id):
     global users_data
+    chat_id = users_data[user_id]["cid"]  # To whom he is chatting to
+    if chat_id is not None:
+        chat_id = chat_id.strip()  # To remove \n for "user1\n"
 
     if user_id in users_data:
-        return render_template("dashboard.html",
-                               uid=user_id,
-                               cid=users_data[user_id]['cid'],
-                               user_list=users_data[user_id]['user_list'],
-                               group_list=users_data[user_id]['group_list'],
-                               msg_list=users_data[user_id]['msg_list'])
+        if chat_id in users_data[user_id]["msg_list"]:
+            # user_id have some chats with chat_id
+            return render_template("dashboard.html",
+                                   uid=user_id,
+                                   cid=users_data[user_id]['cid'],
+                                   user_list=users_data[user_id]['user_list'],
+                                   group_list=users_data[user_id]['group_list'],
+                                   msg_list=users_data[user_id]['msg_list'][chat_id])   # messages with username = chat_id
+        else:
+            # No chats between user_id and chat_id
+            return render_template("dashboard.html",
+                                   uid=user_id,
+                                   cid=users_data[user_id]['cid'],
+                                   user_list=users_data[user_id]['user_list'],
+                                   group_list=users_data[user_id]['group_list'],
+                                   msg_list={})
     else:
         redirect("/home")
 
@@ -141,9 +171,10 @@ def send_msg(user_id):
         req = dict(req)
         print(req)
         text = req['typed_msg']
+        print(users_data)
         chat_id = users_data[user_id]['cid']  # To whom message is send
         if chat_id is not None:
-            chat_id = chat_id.strip()
+            chat_id = chat_id.strip()  # To remove \n for "user1\n"
         msg_count +=1
         # file = open("msg_id.txt", "w")
         # file.write(str(msg_count))
@@ -151,17 +182,17 @@ def send_msg(user_id):
         msg_id = str(msg_count)
         timestamp = str(datetime.datetime.now())
 
-        # dict_msg = {
-        #     "op_type":"send",
-        #     "uid1":user_id,
-        #     "uid2":chat_id,
-        #     "text":text,
-        #     "timestamp":timestamp,
-        #     "msg_id":msg_id
-        # }
-        #
-        # topic = "ActionServer"
-        # producer.send(topic, json.dumps(dict_msg).encode('utf-8'))
+        dict_msg = {  # Sending this to action server
+            "op_type":"send",
+            "uid1":user_id,  # Current user
+            "uid2":chat_id,  # To whom
+            "text":text,
+            "timestamp":timestamp,
+            "msg_id":msg_id
+        }
+
+        topic = "ActionServer"
+        producer.send(topic, json.dumps(dict_msg).encode('utf-8'))
 
         if chat_id in users_data[user_id]['msg_list']:
             # User has already talked to this user

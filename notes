@@ -257,3 +257,32 @@ onClick="window.location.reload();
 ```
 ------------------------------------------------------------------------------
 
+
++-------------+       +--------------+       +---------------+       +--------+
+|   User 1    | ----> | Flask Server | ----> | Action Server | ----> | MongoDB |
++-------------+       |  (home.py)   |       | (action_server.py) |   |        |
+                      +--------------+       +---------------+       +--------+
++-------------+       |  Processes   |       |  Executes logic |      | Stores |
+|   User 2    | ----> | user_data    |       |  Handles DB ops |      |  Data  |
++-------------+       +--------------+       +---------------+       +--------+
+
+Response Flow:
+MongoDB ----> Action Server ----> Flask Server ----> Users
+
+User1 message data will be stored in user_data by flask server but action server is the one which will send message back
+to user2 or group of n people.
+
+Communication between flask server and action server is done thru KAFKA.
+
+A Kafka Topic is a logical channel or category to which records (messages) are sent and from which consumers read.
+In Apache Kafka, topics are the core abstraction for organizing and storing data streams.
+Producer: Publishes (writes) messages to a topic.
+Consumer: Reads messages from a topic.
+
+
+
+To run kafka and zookeper locally
+Create and save docker-compose.yml
+run docker-compose up -d in working dir.
+
+YEPPP THAT IT!!!!

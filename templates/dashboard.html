@@ -75,31 +75,32 @@
 								</tr>
 						</table>
 						<div class="vertical-menu2" id="chat_window">
-<!--							<table width="100%" border="1px" style="font-size: 25px;">-->
+							<table width="100%" border="1px" style="font-size: 25px;">
 
-<!--								{% for msg in msg_list %}-->
-<!--									<tr>-->
-<!--										<td width="50%">-->
-<!--										{{ msg_list[msg]['text'] }}-->
-<!--										</td>-->
-<!--										<td width="20%">-->
-<!--										{{ msg_list[msg]['send_uid'] }}-->
-<!--										</td>-->
-<!--										<td width="20%">-->
-<!--										{{ msg_list[msg]['timestamp'] }}-->
-<!--										</td>-->
-<!--										<td width="10%">-->
-<!--										{{ msg }}-->
-<!--										</td>-->
-<!--									</tr>-->
-<!--								{% endfor %}-->
-<!--							</table>-->
+								{% for msg in msg_list %}
+									<tr>
+										<td width="50%">
+										{{ msg_list[msg]['text'] }}
+										</td>
+										<td width="20%">
+										{{ msg_list[msg]['send_uid'] }}
+										</td>
+										<td width="20%">
+										{{ msg_list[msg]['timestamp'] }}
+										</td>
+										<td width="10%">
+										{{ msg }}
+										</td>
+									</tr>
+								{% endfor %}
+							</table>
 						</div>
-<!--						<script>-->
-<!--						    chatWindow = document.getElementById('chat_window');-->
-<!--						    var xH = chatWindow.scrollHeight;-->
-<!--						    chatWindow.scrollTo(0, xH);-->
-<!--						</script>-->
+<!--						This is to scroll the chat window at the last-->
+						<script>
+						    chatWindow = document.getElementById('chat_window');
+						    var xH = chatWindow.scrollHeight;
+						    chatWindow.scrollTo(0, xH);
+						</script>
 					</td>
 				</tr>
 			</table>
