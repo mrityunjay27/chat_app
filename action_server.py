@@ -11,7 +11,7 @@ from json import loads, dumps
 
 producer = KafkaProducer(bootstrap_servers = 'localhost:9092')
 
-def handle_dict(rec_dict):
+def handle_send(rec_dict):
     pass
 
 def consume_message(topic):

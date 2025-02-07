@@ -26,7 +26,29 @@ msg_count = 0
 
 
 def user_handle(user_id):
-    pass
+    global users_data
+    consumer = KafkaConsumer(user_id,
+                             bootstrap_servers=['localhost:9092'],
+                             auto_offset_reset='latest',
+                             enable_auto_commit=True,
+                             value_deserializer=lambda x: loads(x.decode('utf-8')))
+
+    for msg in consumer:
+        print(msg.value)
+        rec_dict = msg.value
+        if user_id in users_data:
+            print(user_id, " Entered")
+            if rec_dict["op_type"] == "send":
+                msg_id = rec_dict["msg_id"]
+                uid1 = rec_dict["uid1"]
+                uid2 = rec_dict["uid2"]
+                if uid1 not in users_data[user_id]["msg_list"]:
+                    users_data[user_id]["msg_list"][uid1] = {}
+
+                users_data[user_id]["msg_list"][uid1][msg_id] = {}
+                users_data[user_id]["msg_list"][uid1][msg_id]["text"] = rec_dict["text"]
+                users_data[user_id]["msg_list"][uid1][msg_id]["timestamp"] = rec_dict["timestamp"]
+                users_data[user_id]["msg_list"][uid1][msg_id]["send_uid"] = uid1
 
 
 @app.route("/")
