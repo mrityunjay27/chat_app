@@ -54,7 +54,14 @@
 								<td>
 									<h3> Chat Window </h3>
 								</td>
-
+								<td>
+									<a href="{{url_for('fetch_msgs', user_id=uid)}}">
+									<button class="btn" style="width: 100%;">Fetch Msgs</button> </a>
+								</td>
+								<td>
+									<button class="btn" style="width: 100%"
+									onclick="window.location.reload();">Refresh</button>
+								</td>
 							</tr>
 						</table>
 						<h1 style="color: #FF9933;">Chatting with {{cid}} </h1>

@@ -50,6 +50,20 @@ def user_handle(user_id):
                 users_data[user_id]["msg_list"][uid1][msg_id]["timestamp"] = rec_dict["timestamp"]
                 users_data[user_id]["msg_list"][uid1][msg_id]["send_uid"] = uid1
 
+            elif rec_dict["op_type"] == "fetch_msgs":
+                uid1 = rec_dict['uid1']
+                uid2 = rec_dict['uid2']
+                messages = rec_dict['messages']
+                if uid2 not in users_data[user_id]["msg_list"]:
+                    users_data[user_id]["msg_list"][uid2] = {}
+
+                for msg in messages:
+                    msg_id = msg['msg_id']
+                    users_data[user_id]["msg_list"][uid2][msg_id] = {}
+                    users_data[user_id]["msg_list"][uid2][msg_id]["text"] = msg["text"]
+                    users_data[user_id]["msg_list"][uid2][msg_id]["timestamp"] = msg["timestamp"]
+                    users_data[user_id]["msg_list"][uid2][msg_id]["send_uid"] = msg["send_uid"]
+
 
 @app.route("/")
 @app.route("/home")
@@ -232,6 +246,25 @@ def send_msg(user_id):
             users_data[user_id]['msg_list'][chat_id][msg_id]['text'] = text
             users_data[user_id]['msg_list'][chat_id][msg_id]['send_uid'] = user_id
             users_data[user_id]['msg_list'][chat_id][msg_id]['timestamp'] = timestamp
+
+    return redirect('/dashboard/'+str(user_id))
+
+
+@app.route("/fetch_msgs/<string:user_id>", methods = ['GET', 'POST'])
+def fetch_msgs(user_id):
+    global users_data, producer
+    chat_id = users_data[user_id]["cid"]
+    if chat_id is not None:
+        chat_id = chat_id.strip()
+
+    dict_msg = {
+        "op_type":"fetch_msgs",
+        "uid1" : user_id,
+        "uid2" : chat_id
+    }
+
+    topic = "ActionServer"
+    producer.send(topic, json.dumps(dict_msg).encode('utf-8'))
 
     return redirect('/dashboard/'+str(user_id))
 
