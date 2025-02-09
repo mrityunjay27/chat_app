@@ -64,6 +64,20 @@ def user_handle(user_id):
                     users_data[user_id]["msg_list"][uid2][msg_id]["timestamp"] = msg["timestamp"]
                     users_data[user_id]["msg_list"][uid2][msg_id]["send_uid"] = msg["send_uid"]
 
+            elif rec_dict["op_type"] == "grp_send":
+                msg_id = rec_dict["msg_id"]
+                uid1 = rec_dict["uid1"]
+                uid2 = rec_dict["uid2"]
+
+                # uid2 will be group name.
+                if uid2 not in users_data[user_id]["msg_list"]:
+                    users_data[user_id]["msg_list"][uid2] = {}
+
+                users_data[user_id]["msg_list"][uid2][msg_id] = {}
+                users_data[user_id]["msg_list"][uid2][msg_id]["text"] = rec_dict["text"]
+                users_data[user_id]["msg_list"][uid2][msg_id]["timestamp"] = rec_dict["timestamp"]
+                users_data[user_id]["msg_list"][uid2][msg_id]["send_uid"] = uid1
+
 
 @app.route("/")
 @app.route("/home")

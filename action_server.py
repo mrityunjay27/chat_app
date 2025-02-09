@@ -53,17 +53,18 @@ def handle_send(rec_dict):
     # collection_name = None
     if isGroup(uid2):
         collection_name = uid2
-        # group_info = get_group_info()
-        # if uid2 in group_info:
-        #     for member in group_info[uid2]:
-        #         rec_dict["op_type"] = "grp_send"
-        #         producer.send(member, json.dumps(rec_dict).encode('utf-8'))
+        group_info = get_group_info()
+        if uid2 in group_info:
+            for member in group_info[uid2]:
+                rec_dict["op_type"] = "grp_send"
+                producer.send(member, json.dumps(rec_dict).encode('utf-8'))
 
     else:
         temp_list = [uid1, uid2]
         temp_list.sort()
         collection_name = str(temp_list[0]) + "_and_" + str(temp_list[1])
-        # producer.send(rec_dict['uid2'], json.dumps(rec_dict).encode('utf-8'))
+        # Sending the message to uid2 with topic as his username.
+        producer.send(rec_dict["uid2"], json.dumps(rec_dict).encode('utf-8'))
 
     update_db(rec_dict, collection_name)
 
@@ -120,8 +121,7 @@ def consume_message(topic):
         rec_dict = msg.value
 
         if rec_dict["op_type"] == "send":
-            # Sending the message to uid2 with topic as his username.
-            producer.send(rec_dict["uid2"], json.dumps(rec_dict).encode('utf-8'))
+
             handle_send(rec_dict)
         elif rec_dict["op_type"] == "fetch_msgs":
             handle_fetch_msgs(rec_dict)
