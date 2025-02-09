@@ -22,7 +22,10 @@ producer = KafkaProducer(bootstrap_servers = 'localhost:9092')
 
 # Some global variables
 users_data = {}  # This is the only structure that will have everything
-msg_count = 0
+# msg_count = 0
+file = open("msg_id.txt", "r")
+msg_count = int(str(file.readline().strip()))
+file.close()
 
 
 def user_handle(user_id):
@@ -77,6 +80,40 @@ def user_handle(user_id):
                 users_data[user_id]["msg_list"][uid2][msg_id]["text"] = rec_dict["text"]
                 users_data[user_id]["msg_list"][uid2][msg_id]["timestamp"] = rec_dict["timestamp"]
                 users_data[user_id]["msg_list"][uid2][msg_id]["send_uid"] = uid1
+
+            elif rec_dict["op_type"] == "update_msg":
+                msg_id = rec_dict["msg_id"]
+                uid1 = rec_dict["uid1"]
+                uid2 = rec_dict["uid2"]
+                if uid1 in users_data[user_id]["msg_list"]:
+                    users_data[user_id]["msg_list"][uid1][msg_id] = {}
+                    users_data[user_id]["msg_list"][uid1][msg_id]["text"] = rec_dict["text"]
+                    users_data[user_id]["msg_list"][uid1][msg_id]["timestamp"] = rec_dict["timestamp"]
+                    users_data[user_id]["msg_list"][uid1][msg_id]["send_uid"] = uid1
+
+            elif rec_dict["op_type"] == "delete_msg":
+                msg_id = rec_dict["msg_id"]
+                uid1 = rec_dict["uid1"]
+                uid2 = rec_dict["uid2"]
+                if uid1 in users_data[user_id]["msg_list"]:
+                    users_data[user_id]["msg_list"][uid1].pop(msg_id)
+
+            elif rec_dict["op_type"] == "grp_update":
+                msg_id = rec_dict["msg_id"]
+                uid1 = rec_dict["uid1"]
+                uid2 = rec_dict["uid2"]
+                if uid2 in users_data[user_id]["msg_list"]:
+                    users_data[user_id]["msg_list"][uid2][msg_id] = {}
+                    users_data[user_id]["msg_list"][uid2][msg_id]["text"] = rec_dict["text"]
+                    users_data[user_id]["msg_list"][uid2][msg_id]["timestamp"] = rec_dict["timestamp"]
+                    users_data[user_id]["msg_list"][uid2][msg_id]["send_uid"] = uid1
+
+            elif rec_dict["op_type"] == "grp_delete":
+                msg_id = rec_dict["msg_id"]
+                uid1 = rec_dict["uid1"]
+                uid2 = rec_dict["uid2"]
+                if uid2 in users_data[user_id]["msg_list"]:
+                    users_data[user_id]["msg_list"][uid2].pop(msg_id)
 
 
 @app.route("/")
@@ -226,9 +263,9 @@ def send_msg(user_id):
         if chat_id is not None:
             chat_id = chat_id.strip()  # To remove \n for "user1\n"
         msg_count +=1
-        # file = open("msg_id.txt", "w")
-        # file.write(str(msg_count))
-        # file.close()
+        file = open("msg_id.txt", "w")
+        file.write(str(msg_count))
+        file.close()
         msg_id = str(msg_count)
         timestamp = str(datetime.datetime.now())
 
@@ -282,6 +319,68 @@ def fetch_msgs(user_id):
 
     return redirect('/dashboard/'+str(user_id))
 
+
+@app.route("/update_msg/<string:user_id>", methods=['GET', 'POST'])
+def update_msg(user_id):
+    global users_data, msg_count, producer
+    if request.method == 'POST':
+        req = request.form
+        req = dict(req)
+        print(req)
+        text = str(req['text'])
+        msg_id = str(req['msg_id'])
+        chat_id = users_data[user_id]['cid']
+        timestamp = str(datetime.datetime.now())
+        if chat_id is not None:
+            chat_id = chat_id.strip()
+
+        dict_msg = {
+            "op_type": "update_msg",
+            "uid1": user_id,
+            "uid2": chat_id,
+            "text": text,
+            "msg_id": msg_id,
+            "timestamp": timestamp
+        }
+
+        topic = "ActionServer"
+        producer.send(topic, json.dumps(dict_msg).encode('utf-8'))
+
+        if chat_id in users_data[user_id]['msg_list']:
+            users_data[user_id]['msg_list'][chat_id][msg_id]['text'] = text
+            users_data[user_id]['msg_list'][chat_id][msg_id]['timestamp'] = timestamp
+
+    return redirect('/dashboard/' + str(user_id))
+
+@app.route("/delete_msg/<string:user_id>", methods=['GET', 'POST'])
+def delete_msg(user_id):
+    """"
+    Delete message from both side. Sender Receiver or Group
+    """
+    global users_data, msg_count, producer
+    if request.method == 'POST':
+        req = request.form
+        req = dict(req)
+        print(req)
+        msg_id = str(req['msg_id'])
+        chat_id = users_data[user_id]['cid']
+        if chat_id is not None:
+            chat_id = chat_id.strip()
+
+        dict_msg = {
+            "op_type": "delete_msg",
+            "uid1": user_id,
+            "uid2": chat_id,
+            "msg_id": msg_id
+        }
+
+        topic = "ActionServer"
+        producer.send(topic, json.dumps(dict_msg).encode('utf-8'))
+
+        if chat_id in users_data[user_id]['msg_list']:
+            users_data[user_id]['msg_list'][chat_id].pop(msg_id)
+
+    return redirect('/dashboard/' + str(user_id))
 
 @app.route("/logout/<string:user_id>", methods=['GET', 'POST'])
 def logout(user_id):

@@ -108,6 +108,62 @@ def handle_fetch_msgs(rec_dict):
     # Send all the messages to user 1 back, the logged in user.
     producer.send(rec_dict['uid1'], json.dumps(dict_msg).encode('utf-8'))
 
+def handle_update_msg(rec_dict):
+    uid1 = rec_dict["uid1"]
+    uid2 = rec_dict["uid2"]
+    msg_id = rec_dict['msg_id']
+    text = rec_dict['text']
+    collection_name = None
+    if isGroup(uid2):
+        collection_name = uid2
+        group_info = get_group_info()
+        if uid2 in group_info:
+            for member in group_info[uid2]:
+                rec_dict["op_type"] = "grp_update"
+                producer.send(member, json.dumps(rec_dict).encode('utf-8'))
+
+    else:
+        temp_list = [uid1, uid2]
+        temp_list.sort()
+        collection_name = str(temp_list[0]) + "_and_" + str(temp_list[1])
+        producer.send(rec_dict['uid2'], json.dumps(rec_dict).encode('utf-8'))
+
+    timestamp = rec_dict['timestamp']
+    mycol = mydb[collection_name]
+    myquery = { "msg_id": msg_id }
+    mydoc = mycol.find(myquery)
+    newvalues = { "$set": { "text": text } }
+    mycol.update_one(myquery, newvalues)
+    newvalues = { "$set": { "timestamp": timestamp } }
+    mycol.update_one(myquery, newvalues)
+
+
+def handle_delete_msg(rec_dict):
+    uid1 = rec_dict["uid1"]
+    uid2 = rec_dict["uid2"]
+    msg_id = rec_dict['msg_id']
+
+    collection_name = None
+    if isGroup(uid2):
+        collection_name = uid2
+        group_info = get_group_info()
+        if uid2 in group_info:
+            for member in group_info[uid2]:
+                rec_dict["op_type"] = "grp_delete"
+                producer.send(member, json.dumps(rec_dict).encode('utf-8'))
+
+    else:
+        temp_list = [uid1, uid2]
+        temp_list.sort()
+        collection_name = str(temp_list[0]) + "_and_" + str(temp_list[1])
+        producer.send(rec_dict['uid2'], json.dumps(rec_dict).encode('utf-8'))
+
+    mycol = mydb[collection_name]
+    myquery = { "msg_id": msg_id }
+    mydoc = mycol.find(myquery)
+    for x in mydoc:
+        mycol.delete_one(x)
+
 def consume_message(topic):
     global producer
     consumer = KafkaConsumer(topic,
@@ -121,10 +177,16 @@ def consume_message(topic):
         rec_dict = msg.value
 
         if rec_dict["op_type"] == "send":
-
             handle_send(rec_dict)
+
         elif rec_dict["op_type"] == "fetch_msgs":
             handle_fetch_msgs(rec_dict)
+
+        elif rec_dict["op_type"] == "update_msg":
+            handle_update_msg(rec_dict)
+
+        elif rec_dict["op_type"] == "delete_msg":
+            handle_delete_msg(rec_dict)
 
 
 def main():

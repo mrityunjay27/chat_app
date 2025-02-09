@@ -125,7 +125,72 @@
 				</tr>
 			</table>
 			</form>
+			<table width="100%">
+				<tr>
+					<td width="50%">
+						<button style="font-size:20px" onclick="openUpdateMsg()"> Update Msg </button>
+						<div id="update_div" hidden>
+							<form action="{{url_for('update_msg', user_id = uid)}}" method="POST">
+								<table width="100%">
+									<tr>
+										<td width="20%">
+											<input type="text" name="msg_id" placeholder="Msg Id"/>
+										</td>
+										<td width="60%">
+											<input type="text" name="text" placeholder="New Msg..."/>
+										</td>
+										<td>
+											<button class="btn2" type="submit">Update</button>
+										</td>
+										<td>
+											<button class="btn2" onclick="closeUpdateMsg()">Close</button>
+										</td>
+									</tr>
+								</table>
+							</form>
+						</div>
+						<script>
+						    function openUpdateMsg() {
+						      document.getElementById("update_div").style.display = "block";
+						    }
 
+						    function closeUpdateMsg() {
+						      document.getElementById("update_div").style.display = "none";
+						    }
+						</script>
+					</td>
+					<td width="50%">
+						<button style="font-size:20px" onclick="openDeleteMsg()"> Delete Msg </button>
+						<div id="delete_div" hidden>
+							<form action="{{url_for('delete_msg', user_id = uid)}}" method="POST">
+								<table width="100%">
+									<tr>
+										<td width="30%">
+											<input type="text" name="msg_id" placeholder="Msg Id"/>
+										</td>
+										<td>
+											<button class="btn2" type="submit">Delete</button>
+										</td>
+										<td>
+											<button class="btn2" onclick="closeDeleteMsg()">
+											Close</button>
+										</td>
+									</tr>
+								</table>
+							</form>
+						</div>
+						<script>
+						    function openDeleteMsg() {
+						      document.getElementById("delete_div").style.display = "block";
+						    }
+
+						    function closeDeleteMsg() {
+						      document.getElementById("delete_div").style.display = "none";
+						    }
+						</script>
+					</td>
+				</tr>
+			</table>
 		</div>
 	</div>
 </body>
