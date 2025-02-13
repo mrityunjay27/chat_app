@@ -1,13 +1,9 @@
-import datetime
-
-from flask import Flask, render_template, url_for, request, redirect
-from kafka import KafkaProducer, KafkaConsumer
-import os
-import time
 import json
-import pymongo
 import threading
-from json import loads, dumps
+from json import loads
+
+import pymongo
+from kafka import KafkaProducer, KafkaConsumer
 
 producer = KafkaProducer(bootstrap_servers = 'localhost:9092')
 
@@ -17,6 +13,16 @@ mydb = myclient["GlobalDB"]
 
 
 def update_db(rec_dict, collection_name):
+    """
+    Method to save the message in DB.
+    There are two collection(table) to store messages(rows)
+    1. user1_and_user2 (There is no user2_and_user1)
+    2. group 1
+
+    :param rec_dict:
+    :param collection_name: user1_and_user2
+    :return:
+    """
     mycol = mydb[collection_name]
     dict_msg = {
         "msg_id": rec_dict['msg_id'],
@@ -29,10 +35,24 @@ def update_db(rec_dict, collection_name):
 
 
 def isGroup(name):
+    """
+    Return if the message is from a group.
+    :param name:
+    :return:
+    """
     return name.startswith("group")
 
 
 def get_group_info():
+    """
+    Loads and returns group_mapping.txt file in appropriate structure.
+    File content:
+    group1-user1-user2
+    group2-user1-user3
+    group3-user1-user2-user3
+    group4-user2-user3
+    :return:
+    """
     file = open("group_mapping.txt", "r")
     data = file.readlines()
     dict_groups = {}
@@ -47,15 +67,23 @@ def get_group_info():
 
 
 def handle_send(rec_dict):
+    """
+    Method to handle Send Request from Flask Server.
+    Two things here.
+    1. Emit message back to over the topic = receiver of the message over Kafka.
+    2. Save the message to DB.
+    :param rec_dict:
+    :return:
+    """
     uid1 = rec_dict["uid1"]  # Sender
     uid2 = rec_dict["uid2"]  # Receiver
 
-    # collection_name = None
     if isGroup(uid2):
         collection_name = uid2
         group_info = get_group_info()
         if uid2 in group_info:
             for member in group_info[uid2]:
+                # Send the message to all the group members.
                 rec_dict["op_type"] = "grp_send"
                 producer.send(member, json.dumps(rec_dict).encode('utf-8'))
 
@@ -69,6 +97,11 @@ def handle_send(rec_dict):
     update_db(rec_dict, collection_name)
 
 def getMessages(collection_name):
+    """
+    Returns all the messages in collection = collection_name (user1_and_user2)
+    :param collection_name:
+    :return:
+    """
     mycol = mydb[collection_name]
     temp = mycol.find()
     messages = []
@@ -85,6 +118,12 @@ def getMessages(collection_name):
     return messages
 
 def handle_fetch_msgs(rec_dict):
+    """
+    Method to handle Fetch Messages request from flask server.
+    Fetches all the requested message and send it back to Flask over the topic = user who requested it.
+    :param rec_dict: Request info.
+    :return:
+    """
     uid1 = rec_dict["uid1"]
     uid2 = rec_dict["uid2"]
     # We need collection name where the message is stored first.
@@ -105,10 +144,16 @@ def handle_fetch_msgs(rec_dict):
         "messages" : messages
     }
 
-    # Send all the messages to user 1 back, the logged in user.
+    # Send all the messages to user 1 back, the logged-in user.
     producer.send(rec_dict['uid1'], json.dumps(dict_msg).encode('utf-8'))
 
 def handle_update_msg(rec_dict):
+    """
+    Method to handle Update Messages request from flask server.
+    Updates the DB and sends message back to flask server over the topic = receiver
+    :param rec_dict:
+    :return:
+    """
     uid1 = rec_dict["uid1"]
     uid2 = rec_dict["uid2"]
     msg_id = rec_dict['msg_id']
@@ -139,6 +184,12 @@ def handle_update_msg(rec_dict):
 
 
 def handle_delete_msg(rec_dict):
+    """
+    Method to handle Delete Messages request from flask server.
+    Deletes from the DB and sends message back to flask server over the topic = receiver
+    :param rec_dict:
+    :return:
+    """
     uid1 = rec_dict["uid1"]
     uid2 = rec_dict["uid2"]
     msg_id = rec_dict['msg_id']
@@ -165,15 +216,22 @@ def handle_delete_msg(rec_dict):
         mycol.delete_one(x)
 
 def consume_message(topic):
+    """
+    Method to consume and store messages received from Flask Server via Kafka over topic 'ActionServer'.
+    Flask server receives the request from UI and sends the request information to Action Server in some defined format
+    to store in DB and then action server sends back another Kafka message to user2 (receiver) over the topic (receiver's id = uid2)
+    :param topic:
+    :return:
+    """
     global producer
-    consumer = KafkaConsumer(topic,
+    consumer = KafkaConsumer(topic,  # ActionServer
                              bootstrap_servers=['localhost:9092'],
                              auto_offset_reset='latest',
                              enable_auto_commit=True,
                              value_deserializer=lambda x: loads(x.decode('utf-8')))
 
     for msg in consumer:
-        print(msg.value)
+        print(f"Message from Flask Server to Action Server -> {msg.value}")
         rec_dict = msg.value
 
         if rec_dict["op_type"] == "send":

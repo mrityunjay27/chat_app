@@ -1,13 +1,16 @@
 import datetime
-
-from flask import Flask, render_template, url_for, request, redirect
-from kafka import KafkaProducer, KafkaConsumer
-import os
-import time
 import json
-import pymongo
-from json import loads, dumps
 import threading
+from json import loads
+
+import pymongo
+from flask import Flask, render_template, request, redirect
+from kafka import KafkaProducer, KafkaConsumer
+
+
+""""
+user id are basically username in this application.
+"""
 
 app = Flask(__name__)
 app.secret_key = 'any_random_string'
@@ -29,18 +32,43 @@ file.close()
 
 
 def user_handle(user_id):
+    """
+    Each time a user logs in, a separate thread is spawned to handle the user session.
+    This function is tied with thread t1 and called when user logs in via login page or registration page
+
+    This function just updates the global variable users_data from whatever it listens from Kafka.
+    users_data is passed to Front-end for display purpose.
+    :param user_id: Logged-in user's id.
+    :return:
+    """
     global users_data
-    consumer = KafkaConsumer(user_id,
+    consumer = KafkaConsumer(user_id,  # Listens over topic  = current user id (Logged-in)
                              bootstrap_servers=['localhost:9092'],
                              auto_offset_reset='latest',
                              enable_auto_commit=True,
                              value_deserializer=lambda x: loads(x.decode('utf-8')))
 
+    # Iterate over messages received by the consumer.
     for msg in consumer:
+        print(f"Message from Kafka to the current logged-in user {user_id} ->")
         print(msg.value)
+        """
+        Structure of the message:
+        {  
+            "op_type":"send",
+            "uid1":, ----------> Sender
+            "uid2":, ----------> Receiver
+            "text":text,
+            "timestamp":timestamp,
+            "msg_id":msg_id
+        }
+        """
         rec_dict = msg.value
+
+        # Check if user_id is in global data user_data
         if user_id in users_data:
             print(user_id, " Entered")
+
             if rec_dict["op_type"] == "send":
                 msg_id = rec_dict["msg_id"]
                 uid1 = rec_dict["uid1"]
@@ -54,6 +82,9 @@ def user_handle(user_id):
                 users_data[user_id]["msg_list"][uid1][msg_id]["send_uid"] = uid1
 
             elif rec_dict["op_type"] == "fetch_msgs":
+                # Current user uid1 is requesting all the messages with uid2.
+                # Message from Kafka will have all the requested message send from Action Sever (from db).
+                # Here just updating the global variable.
                 uid1 = rec_dict['uid1']
                 uid2 = rec_dict['uid2']
                 messages = rec_dict['messages']
@@ -384,10 +415,16 @@ def delete_msg(user_id):
 
 @app.route("/logout/<string:user_id>", methods=['GET', 'POST'])
 def logout(user_id):
+    """
+    Logs out current user
+    :param user_id: user_id whom to log out
+    :return:
+    """
     global users_data
     print("logout ", user_id)
     users_data.pop(user_id)
     return redirect('/home')
+
 # ip: localhost (127.0.0.1) and port 5000
 if __name__ == "__main__":
     app.run(debug=True, threaded=True)
